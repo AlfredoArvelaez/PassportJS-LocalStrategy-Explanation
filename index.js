@@ -17,12 +17,10 @@ app.use(passport.session())
 
 // Routes
 app.get('/', (req, res) => {
-  res.send(req.user)
+  res.send(req.user.username)
 })
 
-app.post('/auth', passport.authenticate('local'), (req, res) => {
-  res.send('Success')
-})
+app.use('/auth', require('./auth/routes'))
 
 app.listen(process.env.PORT || 3000, () => {
   console.log('Server running')

@@ -7,11 +7,11 @@ const strategy = new LocalStrategy(async (username, password, done) => {
     const fetchedUser = await User.findOne({ username })
 
     if (!fetchedUser) {
-      return done(null, false)
+      return done(null, false, { message: 'Invalid credentials' })
     }
 
     if (fetchedUser.password !== password) {
-      return done(null, false)
+      return done(null, false, { message: 'Invalid credentials' })
     }
 
     return done(null, fetchedUser)

@@ -48,9 +48,9 @@ module.exports = session
 ```
 
 ## Passport Verify Callback
-***Passport JS*** is a global framework on which specific *strategies* for **authentication and authorization** of a user can be applied.
+***Passport JS*** is a global framework on which specific *strategies* for **authentication and authorization** of an user can be applied.
 
-In this case, when using the **Local Strategy**, we must provide a **verification function**, on which ***Passport JS*** will be based to verify the credentials of a user. 
+In this case, when using the **Local Strategy**, we must provide a **verification function**, on which ***Passport JS*** will be based to verify the credentials of an user. 
 
 This **verification function** will be called when the ***passport.authenticate('local')*** is called.
 
@@ -72,7 +72,7 @@ const strategy = new LocalStrategy(async (username, password, done) => {
       return done(null, false)
     }
 
-    return done(null, fetchedUser)
+    done(null, fetchedUser)
 
   } catch(err) {
     done(err)
@@ -111,3 +111,50 @@ passport.deserializeUser(async (id, done) => {
 
 module.exports = passport // Not forget to export the setup passport object
 ```
+Once we authenticate the user, our application will be constantly using the *deserializeUser* method to attach the data in the *req.user* object. (This cannot be optimal for the application because in every request, the method will be making queries to our database in order to get the user data and attach it in the *req.user* object).
+
+## Passport.authenticate('local')
+This method will be used as a middleware in the **/login route** in order to run the **verify function** and authenticate the user. If the authentication proccess is successful, then ***Passport JS*** will *seralize* the user and will attach it in the **session** object, which will store the user identifier reference and will provide it to *deserialize* user data.
+
+```javascript
+// app.js
+...
+app.post('/login', passport.authenticate('local'), (req, res) => {
+  res.send('Successful login')
+})
+...
+```
+
+**Custom error handler**
+When the authentication proccess fails by any error (invalid credentials, user does not exist, ...), ***Passport JS*** only sends a string ('Unauthorized') accompanied by a **401 status code**. If we want to customize this behavior, we can use the following verbose code:
+
+```javascript
+// /middlewares/passportAuthentication.js
+const passport = require('passport')
+
+const passportAuth = (req, res, next) => {
+  passport.authenticate('local', (err, user, info) => {
+    // If some colateral error occurs, handle it
+    if (err) { return next(err) }
+
+    // If not user found by the verify function, return the error message sent by done(null, false, { message: ... }) in json format (custom error handler)
+    if (!user) {
+      return res.status(401).json({ message: info.message })
+    }
+
+    // If the verify function check the user successfully, log in using req.logIn method provide by passport
+    req.logIn(user, (err) => {
+      if (err) { return next(err) }
+
+      next()
+    })
+
+  })(req, res, next)
+}
+
+module.exports = { passportAuth }
+```
+Notice that we are wrapping the ***passport.authenticate('local')*** method into another middleware that allows us to response with the error messages sent by the *done(err, false, { message: ... })* callback; this custom error message will be attached in the **info** object, so we can handle errors using this data. 
+
+Finally, as we are handling the **passport.authenticate('local')** method in some kind of manual way, we must call the **req.logIn(user, (err) => { ... })** method to tell to ***Passport JS*** when our user is successfully authenticated.
+
