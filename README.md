@@ -209,3 +209,16 @@ app.get('/protected/admin-resource', [isAuthenticated, verifyRole('ADMIN')], (re
   res.send('Hello from ADMIN resource')
 })
 ```
+
+## Logout
+When we want to logout an user, in order to finalize its session, we use the **req.logOut()** method.
+
+```javascript
+// app.js
+
+app.get('/logout', (req, res) => {
+  req.logOut()
+  res.send('Successful logout')
+})
+```
+This method will destroy serialized user reference stored in the session object, ending the authenticated user session.
