@@ -20,6 +20,10 @@ app.get('/', (req, res) => {
   res.send(req.user.username)
 })
 
+// Protected Routes
+app.use('/protected', require('./protectedResources/routes'))
+
+// Auth routes
 app.use('/auth', require('./auth/routes'))
 
 app.listen(process.env.PORT || 3000, () => {

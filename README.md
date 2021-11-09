@@ -129,7 +129,7 @@ app.post('/login', passport.authenticate('local'), (req, res) => {
 When the authentication proccess fails by any error (invalid credentials, user does not exist, ...), ***Passport JS*** only sends a string ('Unauthorized') accompanied by a **401 status code**. If we want to customize this behavior, we can use the following verbose code:
 
 ```javascript
-// /middlewares/passportAuthentication.js
+// /auth/passportAuth.js
 const passport = require('passport')
 
 const passportAuth = (req, res, next) => {
@@ -158,3 +158,54 @@ Notice that we are wrapping the ***passport.authenticate('local')*** method into
 
 Finally, as we are handling the **passport.authenticate('local')** method in some kind of manual way, we must call the **req.logIn(user, (err) => { ... })** method to tell to ***Passport JS*** when our user is successfully authenticated.
 
+## isAuthenticated & verifyRole middlewares
+If we want to keep access control about the different resources of our application, we need to verify if the user is authenticated and/or if the user has the pertinent permissions to manage protected data.
+
+To do this, we can use manually the **req.isAuthenticated()** method provided by ***Passport JS***, however, we should do this manual verification in every protected route of our application. In order to simplify and unify this functionality, we create a middleware, which can be imported and set in the all protected routes around our application.
+
+**isAuthenticated**
+```javascript
+// /middlewares/isAuthenticated.js
+const isAuthenticated = (req, res, next) => {
+  if (!req.isAuthenticated()) {
+    return res.status(403).json({ message: 'User not authenticated' })
+  }
+
+  next()
+}
+
+module.exports = { isAuthenticated }
+```
+> Middleware used to verify the user authentication.
+
+**verifyRole**
+```javascript
+// /middlewares/verifyRole.js
+const verifyRole = (...authorizedRoles) => {
+  return (req, res, next) => {
+    if (!authorizedRoles.some(role => role === req.user.role)) {
+      return res.status(403).json({ message: 'User does not have permission to access to this resource' })
+    }
+
+    next()
+  }
+}
+
+module.exports = { verifyRole }
+```
+> Middleware used to verify the user role against a list of authorized roles. Notice that the middleware uses the **req.user** object. In this case, this object must contain the **role** property and the user must be authenticated before verify its role.
+
+**Implementation**
+```javascript
+// app.js
+
+// Route where user must be authenticated but doesnt matters its role
+app.get('/protected/resource', [isAuthenticated], (req, res) => {
+  res.send('Hello from protected route')
+})
+
+// Route where user must be authenticated and must be have an ADMIN
+app.get('/protected/admin-resource', [isAuthenticated, verifyRole('ADMIN')], (req, res) => {
+  res.send('Hello from ADMIN resource')
+})
+```
